@@ -1,0 +1,41 @@
+# file: ~/.gitignore_global
+# Build files
+node_modules
+.next
+out
+build
+dist
+package-info
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Lock files
+package-lock.json
+yarn.lock
+
+# Testing files
+coverage
+
+# OS generated files
+.DS_Store
+.DS_Store?
+
+# Environment files
+.env
+venv
+
+# Editor directories and files
+.vscode
+.idea
+
+# Auto Generated PWA files
+**/public/sw*
+**/public/workbox-*
+**/public/workbox-*.js
+**/public/worker-*.js
+**/public/worker-*.js.map
