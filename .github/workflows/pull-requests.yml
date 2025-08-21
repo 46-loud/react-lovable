@@ -1,0 +1,65 @@
+name: 'Pull Request'
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+env:
+  BASE_TAG: '${{vars.GCP_LOCATION}}-docker.pkg.dev/${{vars.PROJECT_ID}}/${{vars.REPOSITORY}}/${{github.event.repository.name}}'
+
+jobs:
+  install:
+    name: 'Install dependencies'
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@v4'
+      - name: 'Generating empty yarn lock'
+        run: touch yarn.lock
+      - name: 'Setup Node'
+        uses: 'actions/setup-node@v4'
+        with:
+          node-version: 20.15.0
+          cache: yarn
+      - name: 'Setup dependencies cache'
+        uses: actions/cache@v4
+        with:
+          path: '**/node_modules'
+          key: ${{github.event.repository.name}}-yarn-dependencies
+      - name: 'Install'
+        run: yarn install
+
+  # qa:
+  #   name: 'QA validations'
+  #   runs-on: 'ubuntu-latest'
+  #   permissions:
+  #     contents: 'read'
+  #     id-token: 'write'
+  #   needs: install
+  #   steps:
+  #     - name: 'Checkout'
+  #       uses: 'actions/checkout@v4'
+  #       with:
+  #         fetch-depth: 0
+  #     - name: 'Setup Node'
+  #       uses: 'actions/setup-node@v4'
+  #       with:
+  #         node-version: 23.11.0
+  #     - name: 'Recover installed dependencies'
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: '**/node_modules'
+  #         key: ${{github.event.repository.name}}-yarn-dependencies
+  #     - name: 'Lint'
+  #       run: yarn lint ./src
+  #     - name: 'Verify if merged to staging'
+  #       run: |-
+  #         CURRENT_COMMIT=$(git rev-parse HEAD)
+  #         IS_MERGED_TO_STAGING=$(git log --graph | grep ${CURRENT_COMMIT})
+  #         if [[ -z "${IS_MERGED_TO_STAGING}" ]]; then \
+  #           echo "Current revision has not been merged to staging"; \
+  #           exit 1; \
+  #         fi
