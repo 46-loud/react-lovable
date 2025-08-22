@@ -1,0 +1,117 @@
+# name: 'Deploy'
+
+# on:
+#   push:
+#     branches:
+#       - staging
+#       - master
+# env:
+#   BASE_TAG: '${{vars.GCP_LOCATION}}-docker.pkg.dev/${{vars.PROJECT_ID}}/${{vars.REPOSITORY}}/${{github.event.repository.name}}'
+# jobs:
+#   deploy-image:
+#     name: 'Deploy Image'
+#     runs-on: 'ubuntu-latest'
+#     permissions:
+#       contents: 'read'
+#       id-token: 'write'
+#     environment: ${{github.ref_name}}
+#     steps:
+#       - name: 'Checkout'
+#         uses: 'actions/checkout@v4'
+
+#       - id: 'auth'
+#         name: 'Authenticate to GCP'
+#         uses: 'google-github-actions/auth@v2'
+#         with:
+#           project_id: '${{ vars.PROJECT_ID }}'
+#           workload_identity_provider: '${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}'
+
+#       - name: 'Docker Auth'
+#         uses: 'docker/login-action@v3'
+#         with:
+#           username: 'oauth2accesstoken'
+#           password: '${{ steps.auth.outputs.auth_token }}'
+#           registry: '${{ vars.GCP_LOCATION }}-docker.pkg.dev'
+
+#       - name: 'Build and push Docker container'
+#         run: |-
+#           DEPLOY_TAG=${GITHUB_REF_NAME}
+
+#           if [ "${GITHUB_REF_NAME}" == "master" ]; \
+#             then DEPLOY_TAG="latest"; \
+#           fi
+
+#           docker build \
+#             --tag "${BASE_TAG}:${DEPLOY_TAG}" \
+#             --tag "${BASE_TAG}:${GITHUB_SHA}" \
+#             --no-cache \
+#             -f ./infrastructure/Dockerfile .
+
+#           docker push "${BASE_TAG}" --all-tags
+
+#Deploy con Cloud Run
+  # deploy-frontend:
+  #   name: 'Deploy Frontend'
+  #   runs-on: 'ubuntu-latest'
+  #   needs: deploy-image
+  #   permissions:
+  #     contents: 'read'
+  #     id-token: 'write'
+  #   environment: ${{github.ref_name}}
+  #   steps:
+  #     - id: 'auth'
+  #       name: 'Authenticate to GCP'
+  #       uses: 'google-github-actions/auth@v2'
+  #       with:
+  #         project_id: '${{ vars.PROJECT_ID }}'
+  #         workload_identity_provider: '${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}'
+  #     - name: 'Deploy to Google Cloud Run'
+  #       uses: 'google-github-actions/deploy-cloudrun@v2'
+  #       with:
+  #         service: "${{github.event.repository.name}}-${{ github.ref_name == 'master' && 'production' || github.ref_name }}"
+  #         region: '${{vars.GCP_LOCATION}}'
+  #         image: "${{env.BASE_TAG}}:${{ github.ref_name == 'master' && 'latest' || github.ref_name }}"
+
+#Deploy con instancia de GCP con Docker
+  # deploy-frontend:
+  #   name: 'Deploy Frontend'
+  #   runs-on: 'ubuntu-latest'
+  #   needs: deploy-image
+  #   permissions:
+  #     contents: 'read'
+  #     id-token: 'write'
+  #   environment: ${{github.ref_name}}
+  #   steps:
+  #     - name: 'Checkout'
+  #       uses: 'actions/checkout@v4'
+  #     - id: 'auth'
+  #       name: 'Authenticate to GCP'
+  #       uses: 'google-github-actions/auth@v2'
+  #       with:
+  #         project_id: '${{ vars.PROJECT_ID }}'
+  #         workload_identity_provider: '${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}'
+  #     - name: 'Docker Auth'
+  #       uses: 'docker/login-action@v3'
+  #       with:
+  #         username: 'oauth2accesstoken'
+  #         password: '${{ steps.auth.outputs.auth_token }}'
+  #         registry: '${{ vars.GCP_LOCATION }}-docker.pkg.dev'
+  #     - name: 'Configure SSH connection'
+  #       run: |-
+  #         mkdir -p ~/.ssh
+  #         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/private-key
+  #         echo "${{ secrets.SSH_CONFIG_FILE }}" > ~/.ssh/config
+  #         sudo chmod 700 ~/.ssh
+  #         sudo chmod 600 ~/.ssh/config
+  #         sudo chmod 600 ~/.ssh/private-key
+  #         ssh instance "docker ps"
+  #     - name: 'Deploy to Docker Instance'
+  #       env:
+  #         DOCKER_HOST: ssh://instance
+  #         PORT: ${{ vars.DEPLOY_PORT }}
+  #         DEPLOY_TAG: ${{ github.ref_name == 'master' && 'latest' || github.ref_name }}
+  #       run: |-
+  #           docker compose \
+  #             -f infrastructure/environments/compose.yml \
+  #             -p ${{github.event.repository.name}} \
+  #             up --build --force-recreate -d
